@@ -12,6 +12,6 @@ Whole device:
 Monitoring data on LCD screen: 
 ![alt text](https://github.com/EgorichKiev/Device-for-monitoring-a-premature-baby/blob/master/DSC_5659.JPG)
 
-![alt text](https://github.com/EgorichKiev/Device-for-monitoring-a-premature-baby/blob/master/DSC_5660.JPG)
+![alt text](https://github.com/EgorichKiev/Device-for-monitoring-a-premature-baby/blob/master/DSC_5658.JPG)
 
-![alt text](https://github.com/EgorichKiev/Device-for-monitoring-a-premature-baby/blob/master/DSC_5660.JPG)
+![alt text](https://github.com/EgorichKiev/Device-for-monitoring-a-premature-baby/blob/master/DSC_5661.JPG)
