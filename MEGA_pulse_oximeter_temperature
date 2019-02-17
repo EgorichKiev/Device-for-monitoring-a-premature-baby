@@ -1,0 +1,193 @@
+#include <Arduino.h>
+#include <U8g2lib.h>
+#include <SPI.h>
+#include <math.h>
+#include <Wire.h>
+#include "MAX30100_PulseOximeter.h"
+#include "MAX30100.h"
+#include <SparkFun_APDS9960.h>
+
+#define REPORTING_PERIOD_MS 2000
+
+#define TEMP A0
+
+PulseOximeter pox;
+
+uint32_t tsLastReport = 0;
+
+//U8G2_ST7920_128X64_1_HW_SPI u8g2(U8G2_R0, /* CS=*/ 10, /* reset=*/ 8); for uno
+U8G2_ST7920_128X64_F_SW_SPI u8g2(U8G2_R0, /* clock=*/ 13, /* data=*/ 11, /* CS=*/ 10, /* reset=*/ 8);
+
+float bpm;
+float bpm_2;
+char Bpm[3]; //empty char array to hold the converted temp float
+float spo2;
+float spo2_2;
+char SpO2[4]; //empty char array to hold the converted temp float
+char Temp[3]; //empty char array to hold the converted temp float
+float temperature = 0;
+uint32_t timer;
+bool temp_delay;
+uint32_t timer2;
+bool beat;
+uint32_t timer3;
+
+
+SparkFun_APDS9960 apds = SparkFun_APDS9960();
+
+uint16_t blue_light = 0;
+String blue;
+char blue2[4];
+
+uint16_t red_light = 0;
+String red;
+char red2[4];
+
+uint16_t ambient_light = 0;
+String ambient;
+char ambient2[4];
+
+void onBeatDetected()
+{
+  if (!beat) {
+    timer2 = millis ();
+    beat = 1;
+  }
+
+  if ((millis () - timer2) >= 200) {
+    beat = 0;
+  }
+}
+
+void setup(void) {
+  pox.begin();
+  pox.setOnBeatDetectedCallback(onBeatDetected);
+  // pox.setIRLedCurrent(MAX30100_LED_CURR_7_6MA);
+  pinMode(TEMP, INPUT);                           // A0 to measure temperature OUTSIDE/INSIDE
+  u8g2.begin();
+  apds.init();
+  apds.enableLightSensor(true);
+}
+
+void loop(void) {
+
+  pox.update();
+
+  u8g2.firstPage();
+  do {
+
+    if (!temp_delay) {                                  //задержка при отображении температуры на табло вместо функции delay, чтобы на табло цифры не прыгали
+
+      uint32_t readings = 0;
+      for (int i = 0; i < 10; i++) {            // Make multiple measurements to take average from, avoiding large fluctuations
+        readings += analogRead(TEMP);                         // Read the temperature sensor's output
+      }
+      timer = millis ();
+
+      temperature = readings / 10;
+      temperature = 1023 / temperature - 1;
+      temperature = 9850 / temperature;
+      temperature = temperature / 10000;                                 // (R/Ro)
+      temperature = log(temperature);                                   // ln(R/Ro)
+      temperature /= 3950;                                              // 1/B * ln(R/Ro)
+      temperature += 1.0 / (25 + 273.15);                               // + (1/To)
+      temperature = 1.0 / temperature;                                  // инвертируем
+      temperature -= 273.15;
+      temperature += 1.6;
+
+      temp_delay = 1;
+    }
+
+    if ((millis () - timer) >= 1000) {
+      temp_delay = 0;
+    }
+
+    if (millis() - tsLastReport > REPORTING_PERIOD_MS) {
+
+      bpm_2 = pox.getHeartRate();
+      bpm_2 *= 1.4;                       // найти причину неправильного ритма - где-то в 1,5 раза отличается от реального!!!
+      spo2_2 = pox.getSpO2();
+
+      
+
+      tsLastReport = millis();
+    }
+    
+    if ((bpm_2 != 0) && (spo2_2 != 0)) {
+        bpm = bpm_2;
+        spo2 = spo2_2;
+        timer3 = millis();
+      }
+      
+    if (millis() - timer3 > 6000) {
+      bpm = bpm_2;
+      spo2 = spo2_2;
+    }
+    
+    u8g2.setFont(u8g2_font_ncenB18_tr);
+    dtostrf(bpm, 3, 0, Bpm);          // convert floats into char u8g strings
+    u8g2.drawStr(0, 18, Bpm);
+
+    u8g2.setFont(u8g2_font_ncenB18_tr);
+    dtostrf(spo2, 3, 0, SpO2);                  // convert floats into char u8g strings
+    u8g2.drawStr(0, 48, SpO2);
+
+
+    u8g2.setFont(u8g2_font_ncenB08_tr);
+    u8g2.drawStr(42, 18, "BPm");
+    u8g2.setFont(u8g2_font_profont12_tn);
+    u8g2.drawStr(0, 28, "215  100");
+
+
+    u8g2.setFont(u8g2_font_ncenB18_tr);
+    u8g2.drawStr(42, 48, "%");
+    u8g2.setFont(u8g2_font_ncenB08_tr);
+    u8g2.drawStr(44, 60, "SpO2");
+    u8g2.setFont(u8g2_font_profont12_tn);
+    u8g2.drawStr(0, 60, "100  85");
+
+    u8g2.setFont(u8g2_font_ncenB18_tr);
+    dtostrf(temperature, 2, 1, Temp);
+    u8g2.drawStr(72, 18, Temp);
+    u8g2.setFont(u8g2_font_ncenB08_tr);
+    u8g2.drawStr(121, 18, "C");
+    u8g2.setFont(u8g2_font_profont12_tn);
+    u8g2.drawStr(72, 28, "36.5 37.5");
+
+
+
+    if (apds.readBlueLight(blue_light)) {
+      blue = String (blue_light);
+      blue.toCharArray(blue2, 4);
+      u8g2.setFont(u8g2_font_profont12_tn);
+      u8g2.drawStr(75, 40, blue2);
+      u8g2.setFont(u8g2_font_ncenB08_tr);
+      u8g2.drawStr(96, 40, "BLUE");
+    }
+
+    if (apds.readRedLight(red_light)) {
+      red = String (red_light);
+      red.toCharArray(red2, 4);
+      u8g2.setFont(u8g2_font_profont12_tn);
+      u8g2.drawStr(75, 50, red2);
+      u8g2.setFont(u8g2_font_ncenB08_tr);
+      u8g2.drawStr(96, 50, "RED");
+    }
+
+    if (apds.readAmbientLight(ambient_light)) {
+      ambient = String (ambient_light);
+      ambient.toCharArray(ambient2, 4);
+      u8g2.setFont(u8g2_font_profont12_tn);
+      u8g2.drawStr(75, 60, ambient2);
+      u8g2.setFont(u8g2_font_ncenB08_tr);
+      u8g2.drawStr(96, 60, "AMB.");
+    }
+
+    if (beat) {
+      u8g2.setFont(u8g2_font_unifont_t_symbols);
+      u8g2.drawGlyph(59, 11, 0x2665);
+    }
+
+  } while ( u8g2.nextPage() );
+
+}
