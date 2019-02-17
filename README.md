@@ -8,3 +8,10 @@ Sensors are connected via a logic level converter from 3.3V to 5V
 
 Whole device:
 ![alt text](https://github.com/EgorichKiev/Device-for-monitoring-a-premature-baby/blob/master/DSC_5660.JPG)
+
+Monitoring data on LCD screen: 
+![alt text](https://github.com/EgorichKiev/Device-for-monitoring-a-premature-baby/blob/master/DSC_5659.JPG)
+
+![alt text](https://github.com/EgorichKiev/Device-for-monitoring-a-premature-baby/blob/master/DSC_5660.JPG)
+
+![alt text](https://github.com/EgorichKiev/Device-for-monitoring-a-premature-baby/blob/master/DSC_5660.JPG)
